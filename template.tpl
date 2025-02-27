@@ -13,7 +13,7 @@ ___INFO___
   "id": "pmuipurchase",
   "version": 1,
   "securityGroups": [],
-  "displayName": "PM Universal Integration Purchase",
+  "displayName": "PM Client-side Integration - Purchase",
   "categories": [
     "ADVERTISING",
     "ANALYTICS",
@@ -61,6 +61,10 @@ ___TEMPLATE_PARAMETERS___
     "displayName": "Select dataLayer type for quick set up",
     "selectItems": [
       {
+        "value": "auto",
+        "displayValue": "Auto (Default)"
+      },
+      {
         "value": "ecommerce.purchase.actionField.id",
         "displayValue": "ecommerce.purchase.actionField.id"
       },
@@ -78,14 +82,12 @@ ___TEMPLATE_PARAMETERS___
       },
       {
         "value": "custom",
-        "displayValue": "Custom fields"
+        "displayValue": "Custom"
       }
     ],
     "simpleValueType": true,
     "help": "Select your dataLayer type for quick set up, or choose custom if you chose to insert variables instead.",
-    "alwaysInSummary": true,
-    "notSetText": "Auto (Default)",
-    "defaultValue": "auto"
+    "alwaysInSummary": true
   },
   {
     "type": "GROUP",
@@ -172,10 +174,62 @@ ___TEMPLATE_PARAMETERS___
       {
         "type": "TEXT",
         "name": "customerEmail",
-        "displayName": "Email",
+        "displayName": "Emai",
         "simpleValueType": true,
         "help": "Customers email adresse",
-        "valueHint": "test@test.com"
+        "valueHint": "test@test.com",
+        "enablingConditions": [
+          {
+            "paramName": "useHashedEmail",
+            "paramValue": true,
+            "type": "NOT_EQUALS"
+          }
+        ]
+      },
+      {
+        "type": "TEXT",
+        "name": "customerEmailSha256",
+        "displayName": "Emaill (SHA256)",
+        "simpleValueType": true,
+        "help": "Customers email adresse",
+        "valueHint": "SHA256",
+        "enablingConditions": [
+          {
+            "paramName": "useHashedEmail",
+            "paramValue": true,
+            "type": "EQUALS"
+          }
+        ]
+      },
+      {
+        "type": "TEXT",
+        "name": "customerEmailSha256GA",
+        "displayName": "Email (SHA256GA)",
+        "simpleValueType": true,
+        "help": "Customers email adresse",
+        "valueHint": "SHA256GA",
+        "enablingConditions": [
+          {
+            "paramName": "useHashedEmail",
+            "paramValue": true,
+            "type": "EQUALS"
+          }
+        ]
+      },
+      {
+        "type": "TEXT",
+        "name": "customerEmailMd5",
+        "displayName": "Email (MD5)",
+        "simpleValueType": true,
+        "help": "Customers email adresse",
+        "valueHint": "MD5",
+        "enablingConditions": [
+          {
+            "paramName": "useHashedEmail",
+            "paramValue": true,
+            "type": "EQUALS"
+          }
+        ]
       },
       {
         "type": "TEXT",
@@ -341,14 +395,6 @@ ___TEMPLATE_PARAMETERS___
     "groupStyle": "ZIPPY_CLOSED",
     "subParams": [
       {
-        "type": "CHECKBOX",
-        "name": "debugMode",
-        "checkboxText": "Debug mode",
-        "simpleValueType": true,
-        "help": "If checked, the script will write messages to the console.",
-        "displayName": "Debug mode"
-      },
-      {
         "type": "TEXT",
         "name": "documentCookie",
         "displayName": "document.cookie (Required)",
@@ -363,6 +409,20 @@ ___TEMPLATE_PARAMETERS___
             ]
           }
         ]
+      },
+      {
+        "type": "CHECKBOX",
+        "name": "useHashedEmail",
+        "checkboxText": "Use Hashed Email",
+        "simpleValueType": true
+      },
+      {
+        "type": "CHECKBOX",
+        "name": "debugMode",
+        "checkboxText": "Debug mode",
+        "simpleValueType": true,
+        "help": "If checked, the script will write messages to the console.",
+        "displayName": "Debug mode"
       }
     ]
   },
