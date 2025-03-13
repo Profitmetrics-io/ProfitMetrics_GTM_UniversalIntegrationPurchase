@@ -425,18 +425,13 @@ ___TEMPLATE_PARAMETERS___
         "displayName": "Debug mode"
       }
     ]
-  },
-  {
-    "type": "LABEL",
-    "name": "version",
-    "displayName": "Version 2.1"
   }
 ]
 
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
-var version = 'universalintegration-GTM__2.1';
+const tagVersion = 'gtm_clientside_2.1';
 
 // Load GTM APIs
 const JSON = require('JSON');
@@ -568,9 +563,9 @@ function omitUndefined(obj) {
 
 // Construct the URL to send the orderspec data to ProfitMetrics and initiates the data send process.
 
-function pmLogOrder(pid, version, orderspec) {
+function pmLogOrder(pid, tagVersion, orderspec) {
     var o = encodeUriComponent(JSON.stringify(orderspec));
-    var cv = encodeUriComponent(version);
+    var cv = encodeUriComponent(tagVersion);
     var u = 'https://my.profitmetrics.io/l.php?v=1' + '&pid=' + encodeUriComponent(pid) + '&cv=' + cv + '&o=' + o;
     
     debugLog("pid: " + pid);
@@ -1110,7 +1105,7 @@ for (var prop in orderspec) {
     }
 }
 
-pmLogOrder(pmId, orderspec);
+pmLogOrder(pmId, tagVersion, orderspec);
 data.gtmOnSuccess();
 
 
