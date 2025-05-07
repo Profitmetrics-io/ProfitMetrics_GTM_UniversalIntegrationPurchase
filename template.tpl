@@ -474,25 +474,6 @@ function debugLog() {
 }
 
 // Utility Functions
-// Helper function to check if a string resembles JSON structure.
-function looksLikeJSON(value) {
-  const type = getType(value);
-  if (type !== 'string') return false;
-
-  // Check if value resembles JSON structure
-  const firstChar = value.trim().charAt(0);
-  const lastChar = value.trim().charAt(value.trim().length - 1);
-
-  if (
-    (firstChar === '{' && lastChar === '}') ||
-    (firstChar === '[' && lastChar === ']')
-  ) {
-    const parsedType = getType(JSON.parse(value));
-    return parsedType === 'array' || parsedType === 'object';
-  }
-
-  return false;
-}
 
 // Convert null or empty string values to undefined
 function toUndefined(value) {
@@ -623,27 +604,80 @@ function pmLogOrder(pid, tagVersion, orderspec) {
   const allCookiesString = data.documentCookie;
   const allCookiesArray = allCookiesString.split(';');
 
-  // Extract the ga4 session id
-  const _implGa4SessId = allCookiesArray
-    .filter((c) => c.indexOf('_ga_') !== -1)
-    .map((c) => c.trim().split('.'))
-    .filter((c) => c && c.length >= 4)
-    .map((c) => {
-      const namePart = c[0].trim();
-      return namePart.substring(4, namePart.indexOf('=')) + ':' + c[2];
-    })
-    .join(',');
+  let ga4SessionIds = [];
+  let ga4SessionCounts = [];
 
-  // Extract the ga4 session count
-  const _implGa4SessCount = allCookiesArray
-    .filter((c) => c.indexOf('_ga_') !== -1)
-    .map((c) => c.trim().split('.'))
-    .filter((c) => c && c.length >= 4)
-    .map((c) => {
-      const namePart = c[0].trim();
-      return namePart.substring(4, namePart.indexOf('=')) + ':' + c[3];
-    })
-    .join(',');
+  allCookiesArray.forEach(cookieString => {
+    const trimmedCookieString = cookieString.trim();
+    if (!trimmedCookieString.startsWith('_ga_')) {
+      return;
+    }
+
+    const eqIndex = trimmedCookieString.indexOf('=');
+    if (eqIndex === -1) {
+      debugLog('Malformed _ga_ cookie (no =):', trimmedCookieString);
+      return;
+    }
+
+    const cookieNamePart = trimmedCookieString.substring(0, eqIndex);
+    const measurementId = cookieNamePart.substring(4);
+    const cookieValue = trimmedCookieString.substring(eqIndex + 1);
+
+    let sessionId = null;
+    let sessionCount = null;
+
+    if (cookieValue.startsWith('GS2.')) {
+      const parts = cookieValue.split('.');
+      if (parts.length >= 3) {
+        const dataSegmentsString = parts[2];
+        const dataSegments = dataSegmentsString.split('$');
+
+        const sessionSegment = dataSegments.find(segment => segment.startsWith('s'));
+        if (sessionSegment) {
+          sessionId = sessionSegment.substring(1);
+        }
+
+        const countSegment = dataSegments.find(segment => segment.startsWith('o'));
+        if (countSegment) {
+          sessionCount = countSegment.substring(1);
+        }
+      } else {
+        debugLog('Malformed GS2 cookie (not enough . parts):', cookieValue);
+      }
+    } else if (cookieValue.startsWith('GS1.')) {
+      const parts = cookieValue.split('.');
+      if (parts.length >= 3) {
+        sessionId = parts[2];
+      }
+      if (parts.length >= 4) {
+        sessionCount = parts[3];
+      }
+      if (parts.length < 3) {
+          debugLog('Malformed GS1 cookie (not enough . parts for session ID):', cookieValue);
+      }
+    } else {
+      debugLog('Unknown _ga_ cookie format:', cookieValue);
+    }
+
+    if (sessionId) {
+      ga4SessionIds.push(measurementId + ':' + sessionId);
+    } else {
+      debugLog('Session ID not found for measurement ID:', measurementId, 'in cookie value:', cookieValue);
+    }
+
+    if (sessionCount) {
+      ga4SessionCounts.push(measurementId + ':' + sessionCount);
+    } else {
+      debugLog('Session Count not found for measurement ID:', measurementId, 'in cookie value:', cookieValue);
+    }
+  });
+
+  const _implGa4SessId = ga4SessionIds.join(',');
+  const _implGa4SessCount = ga4SessionCounts.join(',');
+
+  debugLog('_implGa4SessId result:', _implGa4SessId);
+  debugLog('_implGa4SessCount result:', _implGa4SessCount);
+
 
   if (_implGa4SessId && _implGa4SessId.length > 0) {
     u += '&ga4_sessionid=' + encodeUriComponent(_implGa4SessId);
@@ -1300,5 +1334,3 @@ setup: ''
 ___NOTES___
 
 Created on 11.8.2023 22.05.58
-
-
