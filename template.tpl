@@ -1,4 +1,12 @@
-﻿___INFO___
+﻿___TERMS_OF_SERVICE___
+
+By creating or modifying this file you agree to Google Tag Manager's Community
+Template Gallery Developer Terms of Service available at
+https://developers.google.com/tag-manager/gallery-tos (or such other URL as
+Google may provide), as modified from time to time.
+
+
+___INFO___
 
 {
   "type": "TAG",
@@ -28,6 +36,11 @@
 ___TEMPLATE_PARAMETERS___
 
 [
+  {
+    "type": "LABEL",
+    "name": "version",
+    "displayName": "Version 3.0.0"
+  },
   {
     "type": "TEXT",
     "name": "publicId",
@@ -85,7 +98,7 @@ ___TEMPLATE_PARAMETERS___
     "type": "GROUP",
     "name": "customFieldsOverride",
     "displayName": "Custom fields (Override)",
-    "groupStyle": "ZIPPY_CLOSED",
+    "groupStyle": "ZIPPY_OPEN_ON_PARAM",
     "subParams": [
       {
         "type": "TEXT",
@@ -423,7 +436,7 @@ ___TEMPLATE_PARAMETERS___
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
-const tagVersion = 'gtm_clientside_2.2';
+const tagVersion = 'gtm_clientside_3.0';
 
 // Load GTM APIs
 const JSON = require('JSON');
@@ -446,37 +459,66 @@ if (data.debugMode) {
 
 // Check if public ID is set
 if (!data.publicId) {
-  if (typeof debugLog === 'function') {
-    debugLog('Error: data.publicId is undefined.');
-  } else if (data.debugMode) {
-    log('Error: data.publicId is undefined. (debugLog not yet initialized)');
-  }
+  debugLog('Error: data.publicId is undefined.');
   data.gtmOnFailure();
   return;
 }
 
 // Debug function
 function debugLog() {
-  if (data.debugMode) {
-    var message = '';
-    for (var i = 0; i < arguments.length; i++) {
-      var arg = arguments[i];
-      if (typeof arg === 'undefined') {
-        message += 'Value not available';
-      } else if (typeof arg === 'object') {
-        message += JSON.stringify(arg, null, 2);
-      } else {
-        message += arg.toString();
+  if (!data.debugMode) return;
+
+  var message = '';
+  for (var i = 0; i < arguments.length; i++) {
+    var arg = arguments[i];
+    var type = typeof arg;
+
+    if (arg === null) {
+      message += 'null';
+    } else if (type === 'undefined') {
+      message += 'undefined';
+    } else if (type === 'object') {
+      message += '{';
+      for (var key in arg) {
+        if (arg.hasOwnProperty(key)) {
+          var val = arg[key];
+          var valStr = (val === null) ? 'null' : (typeof val === 'undefined') ? 'undefined' : (typeof val === 'object') ? '[object]' : '' + val;
+          message += key + ':' + valStr + ', ';
+        }
       }
-      if (i < arguments.length - 1) {
-        message += ' ';
-      }
+      message += '}';
+    } else {
+      message += '' + arg;
     }
-    log(message);
+
+    if (i < arguments.length - 1) {
+      message += ' ';
+    }
   }
+
+  log(message);
 }
 
 // Utility Functions
+// Helper function to check if a string resembles JSON structure.
+function looksLikeJSON(value) {
+  const type = getType(value);
+  if (type !== 'string') return false;
+
+  // Check if value resembles JSON structure
+  const firstChar = value.trim().charAt(0);
+  const lastChar = value.trim().charAt(value.trim().length - 1);
+
+  if (
+    (firstChar === '{' && lastChar === '}') ||
+    (firstChar === '[' && lastChar === ']')
+  ) {
+    const parsedType = getType(JSON.parse(value));
+    return parsedType === 'array' || parsedType === 'object';
+  }
+
+  return false;
+}
 
 // Convert null or empty string values to undefined
 function toUndefined(value) {
@@ -487,7 +529,8 @@ function toUndefined(value) {
 // Convert a value into a number, returning undefined for invalid numbers
 function toUndefinedNumber(value) {
   const numberValue = makeNumber(value);
-  if (numberValue !== numberValue) { // Check for NaN
+  if (numberValue !== numberValue) {
+    // Check for NaN
     return undefined;
   }
   return numberValue;
@@ -534,64 +577,6 @@ function omitUndefined(obj) {
   return newObj;
 }
 
-function parseGa4CookieGS1(cookieValue, measurementId, debugLogFn) {
-  let sessionId = null;
-  let sessionCount = null;
-  const parts = cookieValue.split('.');
-
-  if (parts.length >= 3) {
-    sessionId = parts[2];
-    if (!sessionId || sessionId.length === 0) {
-        debugLogFn('GS1 format: Extracted session ID is empty. Cookie:', cookieValue, 'Measurement ID:', measurementId);
-        sessionId = null;
-    }
-  } else {
-    debugLogFn('GS1 format: Not enough parts for session ID. Cookie:', cookieValue, 'Measurement ID:', measurementId);
-  }
-
-  if (parts.length >= 4) {
-    sessionCount = parts[3];
-     if (!sessionCount || sessionCount.length === 0) {
-        debugLogFn('GS1 format: Extracted session count is empty. Cookie:', cookieValue, 'Measurement ID:', measurementId);
-        sessionCount = null;
-    }
-  }
-  return { sessionId: sessionId, sessionCount: sessionCount };
-}
-
-function parseGa4CookieGS2(cookieValue, measurementId, debugLogFn) {
-  let sessionId = null;
-  let sessionCount = null;
-  const parts = cookieValue.split('.');
-
-  if (parts.length >= 3) {
-    const dataSegmentsString = parts[2];
-    if (dataSegmentsString && typeof dataSegmentsString === 'string') {
-      const dataSegments = dataSegmentsString.split('$');
-
-      const sessionSegment = dataSegments.find(function(segment) { return segment.startsWith('s'); });
-      if (sessionSegment && sessionSegment.length > 1) {
-        sessionId = sessionSegment.substring(1);
-      } else {
-        debugLogFn('GS2 format: Session ID segment (s) not found or invalid in data segments:', dataSegmentsString, 'Cookie:', cookieValue, 'Measurement ID:', measurementId);
-      }
-
-      const countSegment = dataSegments.find(function(segment) { return segment.startsWith('o'); });
-      if (countSegment && countSegment.length > 1) {
-        sessionCount = countSegment.substring(1);
-      } else {
-        // Session count might be optional, so not logging as an error if not found.
-        // debugLogFn('GS2 format: Session count segment (o) not found or invalid in data segments:', dataSegmentsString, 'Cookie:', cookieValue, 'Measurement ID:', measurementId);
-      }
-    } else {
-        debugLogFn('GS2 format: Data segments part is missing or not a string. Cookie:', cookieValue, 'Measurement ID:', measurementId);
-    }
-  } else {
-    debugLogFn('GS2 format: Not enough parts for data segments. Cookie:', cookieValue, 'Measurement ID:', measurementId);
-  }
-  return { sessionId: sessionId, sessionCount: sessionCount };
-}
-
 // Construct the URL to send the orderspec data to ProfitMetrics and initiates the data send process.
 function pmLogOrder(pid, tagVersion, orderspec) {
   var o = encodeUriComponent(JSON.stringify(orderspec));
@@ -608,7 +593,7 @@ function pmLogOrder(pid, tagVersion, orderspec) {
   debugLog('pid: ' + pid);
   debugLog('cv: ' + cv);
   debugLog('orderspec: ', orderspec);
-  debugLog('Encoded URL: ', u);
+  debugLog('Encoded URL: ', u); // Log the complete URL
 
   var _pm_cc_marketing = null;
   var _pm_cc_statistics = null;
@@ -660,74 +645,52 @@ function pmLogOrder(pid, tagVersion, orderspec) {
     debugLog('Appended gacid_source to URL' + u);
   }
 
+  // Updated GA4 code
   const allCookiesString = data.documentCookie;
-  let ga4SessionIds = [];
-  let ga4SessionCounts = [];
+  const allCookiesArray = allCookiesString.split(';');
 
-  if (typeof allCookiesString === 'string' && allCookiesString.length > 0) {
-    const allCookiesArray = allCookiesString.split(';');
+	let ga4SessionIds = [];
+	let ga4SessionCounts = [];
+	allCookiesArray.forEach( pair => {
+		if( null != pair && pair.trim().indexOf('_ga_') === 0 ) {
+			const pairSplit = pair.split('=');
+			const measurementId = pairSplit[0].substring(5);
+			if( pairSplit[1].indexOf('GS2.1') === 0 ) {
+				const valSplit = pairSplit[1].split('.');
+				if( valSplit.length >= 3 ) {
+					const valContentsSplit = valSplit[2].split('$');
+					if( valContentsSplit.length > 2 ) {
+						let sessId = valContentsSplit[0];
+						let sessCount = valContentsSplit[1];
+						if( sessId.indexOf('s') === 0 ) {
+							sessId = sessId.substring(1);
+						}
+						if( sessCount.indexOf('o') === 0 ) {
+							sessCount = sessCount.substring(1);
+						}
+						ga4SessionIds.push( measurementId + ':' + sessId );
+						ga4SessionCounts.push( measurementId + ':' + sessCount);
+						//console.log( "GS2 " + measurementId + ", sessId:" + sessId + ", sessCount:" + sessCount );
+					}
+				}
+			} else if( pairSplit[1].indexOf('GS1.') === 0 ) {
+				const valSplit = pairSplit[1].split('.');
+				if( valSplit.length >= 4 ) {
+					let sessId = valSplit[2];
+					let sessCount = valSplit[3];
 
-    allCookiesArray.forEach(function(cookieString) {
-      const trimmedCookieString = cookieString.trim();
-      const measurementIdPrefix = '_ga_';
+					ga4SessionIds.push( measurementId + ':' + sessId );
+					ga4SessionCounts.push( measurementId + ':' + sessCount);
+					//console.log( "GS1 " + measurementId + ", sessId:" + sessId + ", sessCount:" + sessCount )
+				}
+			} else {
+				// unsupported version
+			}
 
-      if (!trimmedCookieString.startsWith(measurementIdPrefix)) {
-        return;
-      }
-
-      const eqIndex = trimmedCookieString.indexOf('=');
-      if (eqIndex === -1) {
-        debugLog('Malformed _ga_ cookie (no =):', trimmedCookieString);
-        return;
-      }
-
-      const cookieNamePart = trimmedCookieString.substring(0, eqIndex);
-      if (cookieNamePart.length <= measurementIdPrefix.length) {
-          debugLog('Malformed _ga_ cookie name (too short):', cookieNamePart);
-          return;
-      }
-      const measurementId = cookieNamePart.substring(measurementIdPrefix.length);
-      const cookieValue = trimmedCookieString.substring(eqIndex + 1);
-
-      if (!cookieValue || cookieValue.length === 0) {
-          debugLog('Empty value for _ga_ cookie:', cookieNamePart);
-          return;
-      }
-
-      let parsedInfo = { sessionId: null, sessionCount: null };
-      let knownFormat = false;
-
-      if (cookieValue.startsWith('GS2.')) {
-        parsedInfo = parseGa4CookieGS2(cookieValue, measurementId, debugLog);
-        knownFormat = true;
-      } else if (cookieValue.startsWith('GS1.')) {
-        parsedInfo = parseGa4CookieGS1(cookieValue, measurementId, debugLog);
-        knownFormat = true;
-      } else {
-        debugLog('Unknown _ga_ cookie format. Name:', cookieNamePart, 'Value:', cookieValue);
-      }
-
-      if (parsedInfo.sessionId) {
-        ga4SessionIds.push(measurementId + ':' + parsedInfo.sessionId);
-      } else if (knownFormat) {
-        debugLog('Session ID not extracted for known GA4 format. Measurement ID:', measurementId, 'Cookie Value:', cookieValue);
-      }
-
-      if (parsedInfo.sessionCount) {
-        ga4SessionCounts.push(measurementId + ':' + parsedInfo.sessionCount);
-      } else if (knownFormat) {
-        debugLog('Session Count not extracted for known GA4 format. Measurement ID:', measurementId, 'Cookie Value:', cookieValue);
-      }
-    });
-  } else {
-    debugLog('data.documentCookie is not a valid string or is empty. Skipping GA4 cookie parsing.');
-  }
-
-  const _implGa4SessId = ga4SessionIds.join(',');
-  const _implGa4SessCount = ga4SessionCounts.join(',');
-
-  debugLog('_implGa4SessId result:', _implGa4SessId);
-  debugLog('_implGa4SessCount result:', _implGa4SessCount);
+		}
+	});
+	const _implGa4SessId = ga4SessionIds.join(',');
+	const _implGa4SessCount = ga4SessionCounts.join(',');
 
   if (_implGa4SessId && _implGa4SessId.length > 0) {
     u += '&ga4_sessionid=' + encodeUriComponent(_implGa4SessId);
@@ -737,48 +700,65 @@ function pmLogOrder(pid, tagVersion, orderspec) {
     u += '&ga4_sessioncount=' + encodeUriComponent(_implGa4SessCount);
   }
 
-  debugLog('u: ', u);
+  debugLog('u: ', u); // Debug log the resulting string
 
   var trackspec = { error: 'empty' };
   let pmVisitSourceFromCookie = getCookieValue('pmVisitSource');
   if (pmVisitSourceFromCookie) {
     let decodedValue = decodeUriComponent(pmVisitSourceFromCookie);
-    // Sandboxed JSON.parse returns undefined on error, not null or throws.
     let parsedValue = JSON.parse(decodedValue);
     if (parsedValue) {
       trackspec = parsedValue;
-    } else {
-      debugLog('Failed to parse pmVisitSource cookie value:', decodedValue);
     }
   }
   debugLog('Constructed trackspec: ', trackspec);
 
-  if (trackspec !== null) { // trackspec could be { error: 'empty' } or the parsed object
+  if (trackspec !== null) {
     var t = encodeUriComponent(JSON.stringify(trackspec));
     u += '&t=' + t;
     debugLog('Appended trackspec to URL' + u);
   }
 
-  if (_pm_cc_marketing !== false) {
-    let pmGclid = getCookieValue('pmGclid');
-    if (pmGclid) {
-      var gclid = decodeUriComponent(pmGclid);
-      if (gclid) {
-        u += '&gclid=' + encodeUriComponent(gclid);
-      }
+if (_pm_cc_marketing !== false) {
+  const pmGclid = getCookieValue('pmGclid');
+  if (pmGclid) {
+    const gclid = decodeUriComponent(pmGclid);
+    if (gclid) {
+      u += '&gclid=' + encodeUriComponent(gclid);
+      debugLog('Appended gclid to URL: ' + gclid);
     }
-    debugLog('URL after appending gclid' + u);
+  }
+
+  const pmGbraid = getCookieValue('pmGbraid');
+  if (pmGbraid) {
+    const gbraid = decodeUriComponent(pmGbraid);
+    if (gbraid) {
+      u += '&gbraid=' + encodeUriComponent(gbraid);
+      debugLog('Appended gbraid to URL: ' + gbraid);
+    }
+  }
+
+  const pmWbraid = getCookieValue('pmWbraid');
+  if (pmWbraid) {
+    const wbraid = decodeUriComponent(pmWbraid);
+    if (wbraid) {
+      u += '&wbraid=' + encodeUriComponent(wbraid);
+      debugLog('Appended wbraid to URL: ' + wbraid);
+    }
+  }
 
     let pmfbp = getCookieValue('_fbp');
     if (pmfbp) {
       u += '&fbp=' + encodeUriComponent(pmfbp);
     }
+
     debugLog('URL after appending fbp' + u);
 
     let pmfbc = getCookieValue('_fbc');
     if (pmfbc) {
       u += '&fbc=' + encodeUriComponent(pmfbc);
     }
+
     debugLog('URL after appending fbc' + u);
   }
 
@@ -791,6 +771,7 @@ function pmLogOrder(pid, tagVersion, orderspec) {
     debugLog('URL after appending cc_statistics' + u);
   }
 
+  // GTM's injectScript
   injectScript(
     u,
     function () {
@@ -859,7 +840,7 @@ switch (dataLayerType) {
     tax = toUndefinedNumber(getDataLayerValue('ecommerce.tax'));
     shipping = toUndefinedNumber(getDataLayerValue('ecommerce.shipping'));
     currency = toUndefinedString(getDataLayerValue('ecommerce.currency'));
-    couponCode = toUndefinedString(getDataLayerValue('ecommerce.coupon'));
+    copyFromDataLayer('ecommerce.coupon');
     products = toUndefined(getDataLayerValue('ecommerce.items'));
     break;
 
@@ -952,10 +933,6 @@ var taxRate;
 
 // Helper function to calculate tax rate
 function calculateTaxRate(adjustedTax, adjustedRevenue) {
-  if (adjustedRevenue === 0) { // Avoid division by zero
-    debugLog('Cannot calculate tax rate: adjustedRevenue is zero.');
-    return 0;
-  }
   return (adjustedTax / adjustedRevenue) * 100;
 }
 
@@ -1036,51 +1013,36 @@ function caseFunction(revenue, tax, shipping) {
   }
 
   // Default case if none of the conditions are met
-  debugLog('Tax rate calculation: Default case used.');
   return calculateTaxRate(adjustedTax, adjustedRevenue);
 }
 
 // Check if taxRate is undefined and calculate it if necessary
-if (typeof data.taxRate !== 'undefined' && data.taxRate !== null && data.taxRate !== '') {
+if (typeof data.taxRate !== 'undefined') {
   taxRate = toUndefinedNumber(data.taxRate);
   debugLog('taxRate Overwrite:' + taxRate);
 } else {
-  if (revenue === undefined || tax === undefined) {
-    debugLog('Cannot calculate taxRate: revenue or tax is undefined. Setting taxRate to 0.');
-    taxRate = 0;
-  } else {
-    taxRate = caseFunction(revenue, tax, (shipping === undefined ? 0 : shipping) ); // Pass 0 for shipping if undefined
-  }
-}
-// Ensure taxRate is a valid number
-if (typeof taxRate !== 'number' || taxRate !== taxRate) { // Check for NaN
-    debugLog('Calculated taxRate is invalid. Defaulting to 0. Original calculated value:', taxRate);
-    taxRate = 0;
+  // Calculate taxRate using caseFunction
+  taxRate = caseFunction(revenue, tax, shipping);
 }
 
 // Calculate taxAddition and taxDeduction based on taxRate
 var taxAddition = 1 + taxRate / 100;
-var taxDeduction = (100 + taxRate) === 0 ? 1 : 1 - taxRate / (100 + taxRate); // Avoid division by zero for taxDeduction
+var taxDeduction = 1 - taxRate / (100 + taxRate);
 
 debugLog('Calculated taxRate:' + taxRate);
 debugLog('Calculated taxAddition:' + taxAddition);
 debugLog('Calculated taxDeduction:' + taxDeduction);
 
-// Ensure numeric inputs for calculations, default to 0 if undefined
-const numShipping = shipping === undefined ? 0 : shipping;
-const numRevenue = revenue === undefined ? 0 : revenue;
-const numTax = tax === undefined ? 0 : tax;
-
 // Calculate Shipping amounts
-var ShippingExTax = doesShippingInclTax ? numShipping * taxDeduction : numShipping;
-var ShippingInklTax = doesShippingInclTax ? numShipping : ShippingExTax * taxAddition;
+var ShippingExTax = doesShippingInclTax ? shipping * taxDeduction : shipping;
+var ShippingInklTax = doesShippingInclTax ? shipping : ShippingExTax * taxAddition;
 
 debugLog('Calculated ShippingExTax:' + ShippingExTax);
 debugLog('Calculated ShippingInklTax:' + ShippingInklTax);
 
 // Calculate Total Revenue amounts
-var baseRevenueExTax = doesRevenueInclTax ? numRevenue * taxDeduction : numRevenue;
-var baseRevenueInklTax = doesRevenueInclTax ? numRevenue : numRevenue + numTax;
+var baseRevenueExTax = doesRevenueInclTax ? revenue * taxDeduction : revenue;
+var baseRevenueInklTax = doesRevenueInclTax ? revenue : revenue + tax;
 
 debugLog('Calculated baseRevenueExTax:' + baseRevenueExTax);
 debugLog('Calculated baseRevenueInklTax:' + baseRevenueInklTax);
@@ -1101,87 +1063,94 @@ var shippingWeight = toUndefinedNumber(data.shippingWeight);
 var phone = toUndefinedString(data.customerPhone);
 
 var parsedPhone;
-if (typeof phone === 'string') {
-  parsedPhone = phone
-    .split('')
-    .filter(function (char) {
-      return '0123456789'.indexOf(char) !== -1;
-    })
-    .join('');
 
-  parsedPhone = toUndefinedString(parsedPhone);
+if (phone != null && typeof phone === 'string' && phone.split) {
+  var phoneChars = phone.split('');
+  var filtered = [];
+
+  for (var i = 0; i < phoneChars.length; i++) {
+    var c = phoneChars[i];
+    if ('0123456789'.indexOf(c) !== -1) {
+      filtered.push(c);
+    }
+  }
+
+  parsedPhone = toUndefinedString(filtered.join(''));
 }
 
 // Create orderspec
 var pmId = data.publicId;
 var parsedProducts;
 
-// Check if products is a string that might be JSON.
-if (getType(products) === 'string' && looksLikeJSON(products)) {
-  parsedProducts = JSON.parse(products);
-  if (!parsedProducts) {
-    debugLog('Error: Failed to parse products string. Products string:', products);
-    // data.gtmOnFailure(); // Decided not to fail the tag just for products parsing.
-    // return;
-    parsedProducts = []; // Default to empty array if parsing fails
-  }
-} else if (getType(products) === 'array') {
-  parsedProducts = products;
-} else {
-  debugLog('Products data is not a parseable string or an array. Type detected:', getType(products), '. Defaulting to empty products list.');
-  parsedProducts = []; // Default to empty array if not string/array
-}
+if (getType(products) === 'string') {
+  var temp = products;
 
+  while (temp.indexOf(',}') !== -1) temp = temp.split(',}').join('}');
+  while (temp.indexOf(',]') !== -1) temp = temp.split(',]').join(']');
+
+  // Optional check for control characters
+  var safe = true;
+  for (var i = 0; i < temp.length; i++) {
+    var c = temp.charCodeAt(i);
+    if (c < 32 && c !== 9 && c !== 10 && c !== 13) {
+      debugLog('Invalid character code in JSON string:', c);
+      safe = false;
+      break;
+    }
+  }
+
+  if (!safe) {
+    debugLog('JSON string not safe for parsing.');
+    data.gtmOnFailure();
+    return;
+  }
+
+  parsedProducts = JSON.parse(temp);
+  debugLog('Parsed products:', parsedProducts);
+} else {
+  parsedProducts = products;
+}
 
 var mappedProducts = [];
 
 if (getType(parsedProducts) === 'array') {
   for (var i = 0; i < parsedProducts.length; i++) {
     var product = parsedProducts[i];
-    if (getType(product) !== 'object' || product === null) {
-        debugLog('Skipping invalid product item at index', i, ':', product);
-        continue;
-    }
 
-    var productId;
-    if (product.id) {
-      productId = product.id;
-    } else if (product.sku) {
-      productId = product.sku;
-    } else if (product.item_id) {
-      productId = product.item_id;
-    } else if (product.itemId) {
-      productId = product.itemId;
-    }
+    var productId =
+      product.id ||
+      product.sku ||
+      product.item_id ||
+      product.itemId;
+    
+    var productQuantity =
+      product.quantity ||
+      product.qty;
+    
+    var productPriceExVat =
+      product.price != null ? (doesProductsInclTax ? product.price * taxDeduction : product.price) : product.priceExVat;
 
-    const productPrice = product.price === undefined ? 0 : makeNumber(product.price);
-    const productQuantity = product.quantity === undefined ? 1 : makeNumber(product.quantity);
-
-    if (productPrice !== productPrice || productQuantity !== productQuantity) { // Check for NaN
-        debugLog('Skipping product due to invalid price or quantity. Product:', product);
-        continue;
-    }
-
+    // *** The key correction below ***
     var mappedProduct = {
-      sku: toUndefinedString(productId), // Ensure SKU is string or undefined
-      qty: productQuantity,
-      priceExVat: doesProductsInclTax ? productPrice * taxDeduction : productPrice
+      sku: productId,
+      qty: toUndefinedNumber(productQuantity),
+      priceExVat: toUndefinedNumber(productPriceExVat)
     };
 
     mappedProducts.push(mappedProduct);
     debugLog('mappedProduct:', mappedProduct);
   }
 } else {
-  // This case should ideally be handled by the earlier parsedProducts defaulting.
-  debugLog('Parsed products is not an array after initial processing. Type detected:' + getType(parsedProducts));
-  // data.gtmOnFailure(); // Not failing here, will send order with empty products.
+  debugLog('Parsed products is not an array. Type detected:' + getType(parsedProducts));
+  data.gtmOnFailure();
+  return;
 }
 
 // Define orderspec
 var orderspec = {
   id: toUndefinedString(transactionId),
   orderEmail: toUndefinedString(email),
-  customerPhone: toUndefinedString(parsedPhone), // Changed toUndefinedString for consistency if it's just digits
+  customerPhone: toUndefinedNumber(parsedPhone),
   shippingMethod: toUndefinedString(shippingMethod),
   shippingCountry: toUndefinedString(shippingCountry),
   shippingZipcode: toUndefinedString(shippingZipcode),
@@ -1195,15 +1164,17 @@ var orderspec = {
   products: mappedProducts
 };
 
+// Remove properties with undefined values from orderspec
 orderspec = omitUndefined(orderspec);
 
+// Log the entire cleaned orderspec object
 debugLog('Orderspec preview:', orderspec);
 
-// Check for critical undefined properties before sending
-if (orderspec.id === undefined) {
-    debugLog('Critical Error: Transaction ID (orderspec.id) is undefined. Aborting pmLogOrder.');
-    data.gtmOnFailure();
-    return;
+// Check for undefined properties in orderspec and log errors
+for (var prop in orderspec) {
+  if (orderspec.hasOwnProperty(prop) && orderspec[prop] === undefined) {
+    debugLog(prop + ' is undefined');
+  }
 }
 
 pmLogOrder(pmId, tagVersion, orderspec);
@@ -1416,3 +1387,5 @@ setup: ''
 ___NOTES___
 
 Created on 11.8.2023 22.05.58
+
+
