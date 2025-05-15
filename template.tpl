@@ -179,7 +179,7 @@ ___TEMPLATE_PARAMETERS___
       {
         "type": "TEXT",
         "name": "customerEmail",
-        "displayName": "Emai",
+        "displayName": "Email",
         "simpleValueType": true,
         "help": "Customers email adresse",
         "valueHint": "test@test.com",
