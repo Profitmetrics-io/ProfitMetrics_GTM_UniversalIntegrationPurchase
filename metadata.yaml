@@ -2,9 +2,11 @@ homepage: "https://profitmetrics.io"
 documentation: "https://knowledge.profitmetrics.io/how-to-set-up-universal-integration-through-google-tag-manager"
 versions:
   # Latest version
+  - sha: ee76abfe750bce0ba0f829713fbc444f37306393
+    changeNotes: Fixed typo in "Email"
+  # Older versions
   - sha: 35758d8b246eefc603478c883b382a26e6365843
     changeNotes: Fixed issue related to Google Analytics 4 and introduced support for gbraid and wbraid
-  # Older versions
   - sha: aa8a90d6347ca1e6978be871768277c735fedb43
     changeNotes: Bugfix related to tax deduction
   - sha: 7936557187f5aa04c8424336c979d084f3d157d1
